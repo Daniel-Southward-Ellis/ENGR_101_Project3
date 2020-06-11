@@ -79,36 +79,11 @@ int main(){
 	if (initClientRobot() !=0){
 		std::cout<<" Error initializing robot"<<std::endl;
 	}
-    double vLeft = 0.0;
-    double vRight = 0.0;
-
-		int rotation_count_left = 0; // count num rotations to determine direction of robot
-		int rotation_count_right = 0; // NB: haven't done anything with these rotation counts, my idea
-		//																	was to detect if the robot did a 180, and correct it accordingly
+<<<<<<<    double vLeft = 40.0;
+    double vRight = 30.0;
+    takePicture();
+    SavePPMFile("i0.ppm",cameraView);
     while(1){
-			ImagePPM image;
-			takePicture();
-	    SavePPMFile("i0.ppm",cameraView);
-			OpenPPMFile("i0.ppm", image);
-			int direction = analyse_image(image);
-			if (!direction) { // if direction == 0, move straight
-					rotation_count_left = 0;
-					rotation_count_right = 0;
-					vLeft= 10.0;
-					vRight = 10.0;
-			}
-			else if (direction == 1) { // spin left until we can move straight!
-				rotation_count_right = 0;
-				rotation_count_left++;
-				vLeft = 10.0;
-				vRight = 0.0;
-			}
-			else if (direction == 2) {
-				rotation_count_left = 0;
-				rotation_count_right++;
-				vLeft = 0.0;
-				vRight = 10.0;
-			}
       setMotors(vLeft,vRight);
       std::cout<<" vLeft="<<vLeft<<"  vRight="<<vRight<<std::endl;
        usleep(10000);
