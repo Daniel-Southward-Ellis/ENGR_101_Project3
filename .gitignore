@@ -1,0 +1,4 @@
+#Now we're working on two different systems we should ingore the binaries
+AVC_robot/robot.exe
+AVC_robot/robot
+AVC_robot/robot.o
