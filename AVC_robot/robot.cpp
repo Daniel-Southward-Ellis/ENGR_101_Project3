@@ -47,7 +47,7 @@ int analyse_image(ImagePPM image) {
 	// should add offset (i.e. range), as even if the line is not 100% straight, the robot should still move straight until
 	// the line is considerably 'non-straight'
 	printf("num straight pixels: %i\n",num_straight_pixels);
-	if ((num_straight_pixels/4) > ((image.height/2))) {
+	if ((num_straight_pixels) > ((image.height/2)+10)) {
 		printf("robot should move straight\n");
 		return 0; // indicates robot should move straight
 	}
