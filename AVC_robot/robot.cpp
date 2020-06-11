@@ -17,6 +17,7 @@ int analyse_image(ImagePPM image) {
 	printf("CENTRE OF ROBOTS VIEW: %i\n", image.width/2 );
 	//count total number of white pixels considered to be 'straight' (i.e. within center vision)
 	int num_straight_pixels = 0;
+	int max_centre_offset = 0;
 	// iterate through all the rows and columns in the image, get each pixel
 	for (int row = 0; row < image.height; row++) {
 		for (int column = 0; column < image.width; column++) {
@@ -31,6 +32,11 @@ int analyse_image(ImagePPM image) {
 					// we have found a centre pixel
 					num_straight_pixels++;
 				}
+				else {
+					int pixel_centre_offset = robot_centre_view - column; // calculate offset from CENTRE
+					if (pixel_centre_offset < 0 ) { pixel_centre_offset *= -1; } // getting abs. values
+					if (pixel_centre_offset > max_centre_offset) { max_centre_offset = pixel_centre_offset; }
+				}
 			}
 		}
 	}
@@ -41,9 +47,13 @@ int analyse_image(ImagePPM image) {
 		printf("robot should move straight\n");
 		return 0; // indicates robot should move straight
 	}
-	else { // to be implemented, if the offset indicates left (i.e. closer to 0, move left, closer to image.width, move right)
-		printf("robot should do something else\n");
-		return 1; 
+	else if (max_centre_offset < robot_centre_view){ // if the max offset is closer to left side of screen, turn left
+		printf("robot should turn left\n");
+		return 1;
+	}
+	else if (max_centre_offset > robot_centre_view) {
+		printf("robot should turn right\n");
+		return 2;
 	}
 	return -1; // indicates error
 }
@@ -55,6 +65,8 @@ int main(){
     double vLeft = 0.0;
     double vRight = 0.0;
 
+		int rotation_count_left = 0; // count num rotations to determine direction of robot
+		int rotation_count_right = 0;
     while(1){
 			ImagePPM image;
 			takePicture();
@@ -62,10 +74,20 @@ int main(){
 			OpenPPMFile("i0.ppm", image);
 			int direction = analyse_image(image);
 			if (!direction) { // if direction == 0, move straight
-					vLeft= 20.0;
-					vRight = 20.0;
+					rotation_count_left = 0;
+					rotation_count_right = 0;
+					vLeft= 10.0;
+					vRight = 10.0;
 			}
-			else { // spin until we can move straight!
+			else if (direction == 1) { // spin left until we can move straight!
+				rotation_count_right = 0;
+				rotation_count_left++;
+				vLeft = 10.0;
+				vRight = 0.0;
+			}
+			else if (direction == 2) {
+				rotation_count_left = 0;
+				rotation_count_right++;
 				vLeft = 0.0;
 				vRight = 10.0;
 			}
