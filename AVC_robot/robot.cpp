@@ -4,6 +4,9 @@
 #define WHITE_THRESHOLD 250 // threshold for something being 'white'
 #define CENTRE_OFFSET 2 // allow some offset, accounting for scenarios where we may not make the right analysis of pixel pos
 #define LINE_WIDTH 4 // it appears that the line takes up 4 pixels (using output to make that assumption)
+
+enum Direction { forward, left, right, invalid };
+
 /**
  * Analyse image, and determine whether there is enough 'straight' pixels within the robot's centre
  * view. Image is only analysed from the last x amount of rows (currently image.height/2 + 20), to ensure
@@ -18,7 +21,7 @@
  * @param ImagePPM image (current screen shot of the robots view)
  * @return 0 for straight move, 1 for left move, 2 for right move, -1 for failure (never condition)
  */
-int analyse_image(ImagePPM image) {
+Direction analyse_image(ImagePPM image) {
 	int robot_centre_view = (image.width/2); // we want the line to fall within a range of the robots centre view
 	// testing statements
 	printf("CENTRE OF ROBOTS VIEW: %i\n", image.width/2);
@@ -50,20 +53,20 @@ int analyse_image(ImagePPM image) {
 	// for analysis to consider line straight, all pixels straight ahead must be within centre vision
 	if (avg_offset >= -CENTRE_OFFSET && avg_offset <= CENTRE_OFFSET) {
 		printf("robot should move straight\n");
-		return 0; // indicates robot should move straight
+		return forward; // indicates robot should move straight
 	}
-	// if the column of offset is larger than the robots centre view, robot should turn left
+	// if the average offset is larger than the robots centre view, robot should turn left
 	else if (avg_offset < -CENTRE_OFFSET) {
 		printf("robot should turn left\n");
-		return 1;
+		return left;
 	}
-	// if the column of offset is smaller than the robots centre view, robot should turn right
+	// if the average offset is smaller than the robots centre view, robot should turn right
 	else if (avg_offset > CENTRE_OFFSET) {
 		printf("robot should turn right\n");
-		return 2;
+		return right;
 	}
 	printf("REACHING ERROR STATE - SHOULD NEVER REACH THIS PART OF CODE\n");
-	return -1; // indicates error
+	return invalid; // indicates error
 }
 
 int main(){
@@ -77,23 +80,22 @@ int main(){
 		int rotation_count_right = 0; // NB: haven't done anything with these rotation counts, my idea
 		//																	was to detect if the robot did a 180, and correct it accordingly
     while(1){
-			ImagePPM image;
 			takePicture();
 	    	SavePPMFile("i0.ppm",cameraView);
-			int direction = analyse_image(cameraView);
-			if (!direction) { // if direction == 0, move straight
+			Direction direction = analyse_image(cameraView);
+			if (direction == forward) { // if direction == 0, move straight
 					rotation_count_left = 0;
 					rotation_count_right = 0;
 					vLeft= 10.0;
 					vRight = 10.0;
 			}
-			else if (direction == 1) { // spin left until we can move straight!
+			else if (direction == left) { // spin left until we can move straight!
 				rotation_count_left = 0;
 				rotation_count_right++;
 				vLeft = 0.0;
 				vRight = 10.0;
 			}
-			else if (direction == 2) {
+			else if (direction == right) {
 				rotation_count_right = 0;
 				rotation_count_left++;
 				vLeft = 10.0;
