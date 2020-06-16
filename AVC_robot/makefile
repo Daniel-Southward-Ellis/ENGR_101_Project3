@@ -6,7 +6,18 @@ robot.exe: robot.o
 robot.o: robot.cpp
 	g++  -c $(INCLUDE) robot.cpp
 else
-#Our team is only using windows and mac so this is simply the mac makefile
+SHELL_NAME := $(shell uname -s)
+ifeq ($(SHELL_NAME),Linux)
+SFML = ../../SFML-2.5.1
+CFLAGS = -I ${SFML}/include 
+LFLAGS = -L ${SFML}/lib -Wl,-R ${SFML}/lib 
+LIBS = -lsfml-window  -lsfml-graphics -lsfml-system -lsfml-network 
+robot: robot.o 
+	g++ $(LFLAGS) -o robot robot.o ${LIBS} 
+robot.o: robot.cpp 
+	g++  -c $(CFLAGS) robot.cpp 
+endif
+ifeq ($(SHELL_NAME),Darwin)
 SFML = /usr/local/lib/SFML
 CFLAGS = -I ${SFML}/include
 LFLAGS = -L /usr/local/lib
@@ -15,4 +26,5 @@ robot: robot.o
 	g++ $(LFLAGS) -o robot robot.o ${LIBS} 
 robot.o: robot.cpp
 	g++  -c $(CFLAGS) robot.cpp
+endif
 endif
