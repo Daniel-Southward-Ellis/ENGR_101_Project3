@@ -25,7 +25,7 @@ int analyse_image(ImagePPM image) {
 	// var setting
 	int num_white_pixels = 0; // total num white pixels
 	int avg_offset = 0; // average white pixel offset from centre
-	int start_row = 0; // row that the analysis should start from
+	int start_row = image.height - 10; // row that the analysis should start from
 	// iterate through all the rows and columns in the image, get each pixel
 	for (int row = start_row; row < image.height; row++) {
 		for (int column = 0; column < image.width; column++) {
