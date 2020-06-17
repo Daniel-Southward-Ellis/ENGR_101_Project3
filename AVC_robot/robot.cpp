@@ -6,11 +6,23 @@
 #define LINE_WIDTH 4 // it appears that the line takes up 4 pixels (using output to make that assumption)
 #define STRAIGHT_MOVES_SHARP_TURN 25 // best value for num straight moves before turning; discovered in testing
 #define STRAIGHT_MOVES_TURN 4
+#define STRAIGHT_MOVES_IGNORE_TURN 10
 #define STRAIGHT_MOVES_HALF_ROTATION 40
 
 enum Direction { forward, left, hard_left, right, hard_right, stop, turn_around, invalid};
 
 bool hasTurnedAround = false; // global
+
+/**
+* Move straight before turning sharply, as robot has a delay between what it sees,
+* and when it should move
+*/
+void movesBeforeTurn(int num_turns) {
+	for (int i = 0; i < num_turns; i++) {
+		setMotors(10.0, 10.0);
+		usleep(10000);
+	}
+}
 
 // putting stub in here for challenge :^)
 void analyseRedPixels(ImagePPM image) {
@@ -55,6 +67,7 @@ Direction analyseBlackPixels(ImagePPM image) {
  */
 Direction analyse_image(ImagePPM image, Direction recent_move) {
 	int robot_centre_view = (image.width/2); // we want the line to fall within a range of the robots centre view
+	bool accelerate = false;
 	// testing statements
 	printf("CENTRE OF ROBOTS VIEW: %i\n", image.width/2);
 	// var setting
@@ -108,7 +121,11 @@ Direction analyse_image(ImagePPM image, Direction recent_move) {
 		else if (num_white_pixels < LINE_WIDTH*(image.width/5)) {
 			return left;
 		}
-		hasTurnedAround = false;
+		// if we have encounted another hard turn of same type - now erase this memory
+		if (num_white_pixels >= LINE_WIDTH*(image.width/5) && hasTurnedAround && recent_move == hard_right) {
+			hasTurnedAround = false;
+			accelerate = true;
+		}
 	}
 	// if the average offset is smaller than the robots centre view, robot should turn right
 	if (avg_offset > CENTRE_OFFSET) {
@@ -118,21 +135,19 @@ Direction analyse_image(ImagePPM image, Direction recent_move) {
 		else if (num_white_pixels < LINE_WIDTH*(image.width/5)) {
 			return right;
 		}
-		hasTurnedAround = false;
+		// if we have encounted another hard turn of same type - now erase this memory
+		if (num_white_pixels >= LINE_WIDTH*(image.width/5) && hasTurnedAround && recent_move == hard_left) {
+			hasTurnedAround = false;
+			accelerate = true; // must accelerate to get robot to ignore firstmost identical turn after turning around
+		}
 	}
+
+	if (accelerate) {
+		movesBeforeTurn(STRAIGHT_MOVES_IGNORE_TURN);
+	}
+
 	printf("REACHING ERROR STATE - SHOULD NEVER REACH THIS PART OF CODE\n");
 	return invalid; // indicates error
-}
-
-/**
-* Move straight before turning sharply, as robot has a delay between what it sees,
-* and when it should move
-*/
-void movesBeforeTurn(int num_turns) {
-	for (int i = 0; i < num_turns; i++) {
-		setMotors(10.0, 10.0);
-		usleep(10000);
-	}
 }
 
 void turnAround() {
@@ -161,8 +176,8 @@ int main(){
 			switch (direction) {
 				case forward:
 					printf("MOVING FORWARD\n");
-					vLeft= 10.0;
-					vRight = 10.0;
+					vLeft= 15.0;
+					vRight = 15.0;
 					break;
 				case left:
 					printf("MOVING LEFT\n");
@@ -203,8 +218,8 @@ int main(){
 					hasTurnedAround = true;
 				default:
 					printf("default case\n");
-					vLeft = 10.0;
-					vRight = 10.0;
+					vLeft = 15.0;
+					vRight = 15.0;
 					break;
 			}
       setMotors(vLeft,vRight);
