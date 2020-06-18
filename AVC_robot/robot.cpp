@@ -8,10 +8,14 @@
 #define STRAIGHT_MOVES_TURN 4
 #define STRAIGHT_MOVES_IGNORE_TURN 10
 #define STRAIGHT_MOVES_HALF_ROTATION 40
+#define REDNESS_FRACTION 1.5
+#define WALL_SIZE 25
+#define FLAG_THRESHOLD 20
 
 enum Direction { forward, left, hard_left, right, hard_right, stop, turn_around, invalid};
 
 bool hasTurnedAround = false; // global
+int offWallGracePeriod = 0; // Allows for a short grace period when following walls before turning around
 
 /**
 * Move straight before turning sharply, as robot has a delay between what it sees,
@@ -24,9 +28,46 @@ void movesBeforeTurn(int num_turns) {
 	}
 }
 
-// putting stub in here for challenge :^)
-void analyseRedPixels(ImagePPM image) {
-	return;
+// Method used for challenge, hugs the left wall to make it's way through a maze
+Direction analyseRedPixels(ImagePPM image) {
+	offWallGracePeriod = 10;
+	int num_red_pixels = 0; // total red pixels
+	int left_wall_pixels = 0; // red pixels along the left side
+	int right_wall_pixels = 0; // red pixels along the right side
+	int front_pixels = 0; // red pixels at the front but not the left side
+
+	for (int row = 0; row < image.height; row++) {
+		for (int column = 0; column < image.width; column++) {
+			int red = get_pixel(image, row, column, 0);
+			int green = get_pixel(image, row, column, 1);
+			int blue = get_pixel(image, row, column, 2);
+			double red_fraction = red / REDNESS_FRACTION;
+			if (green < red_fraction && blue < red_fraction) {
+				++num_red_pixels;
+				if (column < WALL_SIZE) {
+					++left_wall_pixels;
+				}else if (column > image.width - WALL_SIZE) {
+					++right_wall_pixels;
+				}
+				
+				if (row < WALL_SIZE && column >= WALL_SIZE && column <= image.width - WALL_SIZE) {
+					++front_pixels;
+				}
+			}
+		}
+	}
+
+	//Try to hug the left hand wall
+	if (left_wall_pixels > 0 && front_pixels == 0) {
+		return forward;
+	}else if (left_wall_pixels == 0) {
+		return left;
+	}else if (front_pixels > 0) {
+		return right;
+	}
+
+	//Lets try and find something to follow
+	return right;
 }
 
 // determine if there are any black pixels in the image, if so, stop the robot
@@ -43,12 +84,17 @@ Direction analyseBlackPixels(ImagePPM image) {
 			}
 		}
 	}
-	// if there are any black pixels - stop, it is the flag (working under assumption our robot will NEVER encounter screen edge)
-	if (num_black_pixels > 0) {
+	// if the number of black pixels exceeds the threshold, stop. We've (hopefully) found the flag
+	if (num_black_pixels > FLAG_THRESHOLD && offWallGracePeriod == 0) {
 		return stop;
 	}
-	// if no black pixels in entire image - must be end of line, turn around (completion)
-	return turn_around;
+	// if black pixels don't exceed the threshold and no grace period left - turn around
+	if (offWallGracePeriod == 0) {
+		return turn_around;
+	}else{
+		//Otherwise go looking for the wall we want to hug
+		return right;
+	}
 }
 
 /**
@@ -72,6 +118,7 @@ Direction analyse_image(ImagePPM image, Direction recent_move) {
 	printf("CENTRE OF ROBOTS VIEW: %i\n", image.width/2);
 	// var setting
 	int num_white_pixels = 0; // total white pixels
+	int num_red_pixels = 0; // total red pixels
 	int avg_offset = 0; // average white pixel offset from centre
 	int start_row = image.height - 10; // row that the analysis should start from
 
@@ -87,6 +134,11 @@ Direction analyse_image(ImagePPM image, Direction recent_move) {
 				// have found white pixel, note: white threshold value is just a test, may need to change
 				avg_offset += column - robot_centre_view;
 				++num_white_pixels;
+			}else{
+				double red_fraction = red / REDNESS_FRACTION;
+				if (green < red_fraction && blue < red_fraction) {
+					++num_red_pixels;
+				}
 			}
 		}
 	}
@@ -101,10 +153,12 @@ Direction analyse_image(ImagePPM image, Direction recent_move) {
 	printf("num rows analysed: %i\n", image.height-start_row);
 
 	// SPECIAL MOVES - NO WHITE PIXELS
-
-	// will need to add in logic for checking NOT RED (i.e. want to follow corridor)
-	if (num_white_pixels == 0) { // no black pixels, no white pixels (must have reached end of line)
-		return analyseBlackPixels(image); // will return turn_around, or stop
+	if (num_white_pixels == 0) { // no white pixels
+		if (num_red_pixels == 0) {
+			return analyseBlackPixels(image); // will return turn_around, or stop
+		} else {
+			return analyseRedPixels(image); // will follow the wall
+		}
 	}
 
 	// LINE ANALYSIS - we know there is at least 1 white pixel.
@@ -164,13 +218,16 @@ int main(){
 	}
     double vLeft = 0.0;
     double vRight = 0.0;
-		bool take_pic = false;
-		Direction mostRecentMove = forward;
+	bool take_pic = false;
+	Direction mostRecentMove = forward;
     while(1){
 			takePicture();
-	    SavePPMFile("i0.ppm",cameraView);
+			SavePPMFile("i0.ppm",cameraView);
 			if (take_pic) {
 				SavePPMFile("lily.ppm",cameraView);
+			}
+			if (offWallGracePeriod > 0) {
+				--offWallGracePeriod;
 			}
 			Direction direction = analyse_image(cameraView, mostRecentMove);
 			switch (direction) {
