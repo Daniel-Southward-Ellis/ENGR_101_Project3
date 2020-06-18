@@ -8,10 +8,20 @@
 #define STRAIGHT_MOVES_TURN 4
 #define STRAIGHT_MOVES_IGNORE_TURN 10
 #define STRAIGHT_MOVES_HALF_ROTATION 40
+#define RED_RATIO 0.3
+#define COLUMN_WIDTH 14
+#define CORIDOR_ROW_OFFSET 4
+
 
 enum Direction { forward, left, hard_left, right, hard_right, stop, turn_around, invalid};
+enum Mode {white, red};
+enum Wall {left_wall, right_wall};
 
 bool hasTurnedAround = false; // global
+
+Mode movement_type = white;
+
+Wall current_wall = left_wall;
 
 /**
 * Move straight before turning sharply, as robot has a delay between what it sees,
@@ -25,15 +35,86 @@ void movesBeforeTurn(int num_turns) {
 }
 
 // putting stub in here for challenge :^)
-void analyseRedPixels(ImagePPM image) {
-	return;
+Direction analyseRedPixels(ImagePPM image) {
+	int num_red_pixels = 0; // total black pixels
+	int avg_pixel_col = 0; // average offset of red pixel
+	int avg_pixel_row = 0;
+	int num_pixels_top = 0;
+	int centre_row = image.height / 2;
+	printf("reaching red\n");
+	for (int row = 0; row < image.height; row++) {
+		for (int column = 0; column < image.width; column++) {
+			int red = get_pixel(image, row, column, 0);
+			int green = get_pixel(image, row, column, 1);
+			int blue = get_pixel(image, row, column, 2);
+			int minRedRatio = red * RED_RATIO; // maximum value a red or green pixel may be for the pixel to be red
+			if (green <= minRedRatio && blue <= minRedRatio) {
+				// printf("lol");
+				++num_red_pixels;
+				avg_pixel_col += column;
+				avg_pixel_row += row;
+				if (row == 0) {
+					num_pixels_top++;
+				}
+			}
+		}
+	}
+	avg_pixel_col = avg_pixel_col/num_red_pixels;
+	avg_pixel_row = avg_pixel_row/num_red_pixels;
+	printf("tot red pixels: %i\n", num_red_pixels);
+	printf("av red pixel col: %i\n", avg_pixel_col);
+	printf("av red pixel row: %i\n", avg_pixel_row);
+	printf("num pixels top %i\n", num_pixels_top);
+
+	if (num_red_pixels > 0) {
+		movement_type = red;
+	}
+
+	if (num_red_pixels > 0 && avg_pixel_row >= centre_row-CORIDOR_ROW_OFFSET && avg_pixel_row <= centre_row+CORIDOR_ROW_OFFSET) {
+		if (avg_pixel_col > (image.width/2)) {
+			current_wall = right_wall;
+		}
+		else {
+			current_wall = left_wall;
+		}
+		return forward;
+	}
+
+	if (num_red_pixels > 0 && avg_pixel_col < (image.width/2) && avg_pixel_row  && num_pixels_top == image.width) {
+		//movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+		return hard_right;
+	}
+
+	if (num_red_pixels > 0 && avg_pixel_col > (image.width/2) && num_pixels_top > image.width-20) {
+		//movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+		return hard_left;
+	}
+
+	if (num_pixels_top > image.width-20 && current_wall == left_wall) {
+		return hard_left;
+	}
+
+	if (num_pixels_top > image.width-20 && current_wall == right_wall
+	) {
+		return hard_right;
+	}
+
+	if (movement_type == red) {
+		return forward;
+	}
+
+	return turn_around; // must be end of white line, no black or red corridors
 }
 
 // determine if there are any black pixels in the image, if so, stop the robot
 Direction analyseBlackPixels(ImagePPM image) {
+	printf("reaching black pixels\n");
 	int num_black_pixels = 0; // total black pixels
 
 	for (int row = 0; row < image.height; row++) {
+		if (movement_type == red) {
+			break;
+		}
 		for (int column = 0; column < image.width; column++) {
 			int red = get_pixel(image, row, column, 0);
 			int green = get_pixel(image, row, column, 1);
@@ -48,7 +129,7 @@ Direction analyseBlackPixels(ImagePPM image) {
 		return stop;
 	}
 	// if no black pixels in entire image - must be end of line, turn around (completion)
-	return turn_around;
+	return analyseRedPixels(image);
 }
 
 /**
@@ -101,6 +182,10 @@ Direction analyse_image(ImagePPM image, Direction recent_move) {
 	printf("num rows analysed: %i\n", image.height-start_row);
 
 	// SPECIAL MOVES - NO WHITE PIXELS
+
+	if (num_white_pixels > 0) {
+		movement_type = white;
+	}
 
 	// will need to add in logic for checking NOT RED (i.e. want to follow corridor)
 	if (num_white_pixels == 0) { // no black pixels, no white pixels (must have reached end of line)
@@ -192,17 +277,17 @@ int main(){
 					vRight = 0.0;
 					break;
 				case hard_right:
-					printf("MOVING HARD LEFT\n");
+					printf("MOVING HARD RIGHT\n");
 					movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
-					vLeft = 160.0;
+					vLeft = 169.0;
 					vRight = 0.0;
 					mostRecentMove = hard_right;
 					break;
 				case hard_left:
-					printf("MOVING HARD RIGHT\n");
+					printf("MOVING HARD LEFT\n");
 					movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
 					vLeft = 0.0;
-					vRight = 160.0;
+					vRight = 169.0;
 					mostRecentMove = hard_left;
 					break;
 				case stop:
