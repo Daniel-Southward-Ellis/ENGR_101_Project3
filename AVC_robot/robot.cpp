@@ -13,7 +13,7 @@
 #define CORIDOR_ROW_OFFSET 4
 
 
-enum Direction { forward, left, hard_left, right, hard_right, stop, turn_around, invalid};
+enum Direction { forward, left, hard_left, emergency_left, right, hard_right, emergency_right, stop, turn_around, invalid};
 enum Mode {white, red};
 enum Wall {left_wall, right_wall};
 
@@ -37,11 +37,13 @@ void movesBeforeTurn(int num_turns) {
 // putting stub in here for challenge :^)
 Direction analyseRedPixels(ImagePPM image) {
 	int num_red_pixels = 0; // total black pixels
+
 	int avg_pixel_col = 0; // average offset of red pixel
 	int avg_pixel_row = 0;
 	int num_pixels_top = 0;
+	int num_pixels_bottom = 0;
+
 	int centre_row = image.height / 2;
-	printf("reaching red\n");
 	for (int row = 0; row < image.height; row++) {
 		for (int column = 0; column < image.width; column++) {
 			int red = get_pixel(image, row, column, 0);
@@ -49,28 +51,36 @@ Direction analyseRedPixels(ImagePPM image) {
 			int blue = get_pixel(image, row, column, 2);
 			int minRedRatio = red * RED_RATIO; // maximum value a red or green pixel may be for the pixel to be red
 			if (green <= minRedRatio && blue <= minRedRatio) {
-				// printf("lol");
 				++num_red_pixels;
 				avg_pixel_col += column;
 				avg_pixel_row += row;
 				if (row == 0) {
 					num_pixels_top++;
 				}
+				if (row == image.height-COLUMN_WIDTH-10) {
+					num_pixels_bottom++;
+				}
 			}
 		}
 	}
-	avg_pixel_col = avg_pixel_col/num_red_pixels;
-	avg_pixel_row = avg_pixel_row/num_red_pixels;
+
 	printf("tot red pixels: %i\n", num_red_pixels);
-	printf("av red pixel col: %i\n", avg_pixel_col);
-	printf("av red pixel row: %i\n", avg_pixel_row);
 	printf("num pixels top %i\n", num_pixels_top);
+	printf("num pixels bottom %i\n", num_pixels_bottom);
 
 	if (num_red_pixels > 0) {
+		// only set if not being divided by 0
+		avg_pixel_col = avg_pixel_col/num_red_pixels;
+		avg_pixel_row = avg_pixel_row/num_red_pixels;
+		printf("av red pixel col: %i\n", avg_pixel_col);
+		printf("av red pixel row: %i\n", avg_pixel_row);
 		movement_type = red;
 	}
 
+	std::cout<<current_wall<<std::endl;
+
 	if (num_red_pixels > 0 && avg_pixel_row >= centre_row-CORIDOR_ROW_OFFSET && avg_pixel_row <= centre_row+CORIDOR_ROW_OFFSET) {
+		printf("MOVING FORWARD - CORRECT CORRIDOR\n\n\n");
 		if (avg_pixel_col > (image.width/2)) {
 			current_wall = right_wall;
 		}
@@ -80,26 +90,43 @@ Direction analyseRedPixels(ImagePPM image) {
 		return forward;
 	}
 
-	if (num_red_pixels > 0 && avg_pixel_col < (image.width/2) && avg_pixel_row  && num_pixels_top == image.width) {
-		//movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+	if (num_red_pixels > 0 && avg_pixel_col < (image.width/2) && avg_pixel_row  && num_pixels_top > (2*image.width)/3) {
+		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
 		return hard_right;
 	}
 
-	if (num_red_pixels > 0 && avg_pixel_col > (image.width/2) && num_pixels_top > image.width-20) {
-		//movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+	if (num_red_pixels > 0 && avg_pixel_col > (image.width/2) && num_pixels_top > (2*image.width)/3) {
+		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
 		return hard_left;
 	}
 
-	if (num_pixels_top > image.width-20 && current_wall == left_wall) {
+	if ((num_pixels_top > (2*image.width)/3 || (num_red_pixels == 0 && movement_type == red)) && current_wall == left_wall) {
+		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
 		return hard_left;
 	}
 
-	if (num_pixels_top > image.width-20 && current_wall == right_wall
+	if ((num_pixels_top > (2*image.width)/3 || (num_red_pixels == 0 && movement_type == red)) && current_wall == right_wall
 	) {
+		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
 		return hard_right;
+	}
+
+	if ((num_pixels_bottom > (2*image.width)/3) && avg_pixel_col > (image.width/2)) {
+		return emergency_left; // emergency turn!
+	}
+
+	if ((num_pixels_bottom > (2*image.width)/3) && avg_pixel_col < (image.width/2)) {
+		return emergency_right; // emergency turn!
 	}
 
 	if (movement_type == red) {
+		printf("MOVING FORWARD - no CORRIDOR\n\n\n");
+		if (avg_pixel_col > (image.width/2) && num_red_pixels > 0) {
+			current_wall = right_wall;
+		}
+		else if (num_red_pixels > 0){
+			current_wall = left_wall;
+		}
 		return forward;
 	}
 
@@ -301,6 +328,16 @@ int main(){
 					vLeft = 0.0;
 					vRight = 0.0;
 					hasTurnedAround = true;
+				case emergency_left:
+					printf("EMERGENCY LEFT\n\n");
+					vLeft = 0.0;
+					vRight = 169.0;
+					break;
+				case emergency_right:
+					printf("EMERGENCY RIGHT\n\n");
+					vLeft = 169.0;
+					vRight = 0.0;
+					break;
 				default:
 					printf("default case\n");
 					vLeft = 15.0;
