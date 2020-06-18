@@ -13,7 +13,7 @@
 #define CORIDOR_ROW_OFFSET 4
 
 
-enum Direction { forward, left, hard_left, emergency_left, right, hard_right, emergency_right, stop, turn_around, invalid};
+enum Direction { forward, left, hard_left, maze_left, emergency_left, right, hard_right, maze_right, emergency_right, stop, turn_around, invalid};
 enum Mode {white, red};
 enum Wall {left_wall, right_wall};
 
@@ -42,6 +42,7 @@ Direction analyseRedPixels(ImagePPM image) {
 	int avg_pixel_row = 0;
 	int num_pixels_top = 0;
 	int num_pixels_bottom = 0;
+	int num_black_pixels = 0;
 
 	int centre_row = image.height / 2;
 	for (int row = 0; row < image.height; row++) {
@@ -61,12 +62,19 @@ Direction analyseRedPixels(ImagePPM image) {
 					num_pixels_bottom++;
 				}
 			}
+			else if ((red <= BLACK_THRESHOLD && green <= BLACK_THRESHOLD && blue <= BLACK_THRESHOLD) && row == image.height-1) {
+				++num_black_pixels;
+			}
 		}
 	}
 
 	printf("tot red pixels: %i\n", num_red_pixels);
 	printf("num pixels top %i\n", num_pixels_top);
 	printf("num pixels bottom %i\n", num_pixels_bottom);
+
+	if (num_black_pixels > 0) {
+		return stop; // any black pixels stop immediately
+	}
 
 	if (num_red_pixels > 0) {
 		// only set if not being divided by 0
@@ -92,23 +100,23 @@ Direction analyseRedPixels(ImagePPM image) {
 
 	if (num_red_pixels > 0 && avg_pixel_col < (image.width/2) && avg_pixel_row  && num_pixels_top > (2*image.width)/3) {
 		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
-		return hard_right;
+		return maze_right;
 	}
 
 	if (num_red_pixels > 0 && avg_pixel_col > (image.width/2) && num_pixels_top > (2*image.width)/3) {
 		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
-		return hard_left;
+		return maze_left;
 	}
 
 	if ((num_pixels_top > (2*image.width)/3 || (num_red_pixels == 0 && movement_type == red)) && current_wall == left_wall) {
 		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
-		return hard_left;
+		return maze_left;
 	}
 
 	if ((num_pixels_top > (2*image.width)/3 || (num_red_pixels == 0 && movement_type == red)) && current_wall == right_wall
 	) {
 		movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
-		return hard_right;
+		return maze_right;
 	}
 
 	if ((num_pixels_bottom > (2*image.width)/3) && avg_pixel_col > (image.width/2)) {
@@ -276,14 +284,12 @@ int main(){
 	}
     double vLeft = 0.0;
     double vRight = 0.0;
-		bool take_pic = false;
+		bool isStopped = false;
+
 		Direction mostRecentMove = forward;
     while(1){
 			takePicture();
 	    SavePPMFile("i0.ppm",cameraView);
-			if (take_pic) {
-				SavePPMFile("lily.ppm",cameraView);
-			}
 			Direction direction = analyse_image(cameraView, mostRecentMove);
 			switch (direction) {
 				case forward:
@@ -306,7 +312,7 @@ int main(){
 				case hard_right:
 					printf("MOVING HARD RIGHT\n");
 					movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
-					vLeft = 169.0;
+					vLeft = 165.0;
 					vRight = 0.0;
 					mostRecentMove = hard_right;
 					break;
@@ -314,13 +320,17 @@ int main(){
 					printf("MOVING HARD LEFT\n");
 					movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
 					vLeft = 0.0;
-					vRight = 169.0;
+					vRight = 165.0;
 					mostRecentMove = hard_left;
 					break;
 				case stop:
 					printf("STOPPING - FOUND FLAG");
+					if (!isStopped) {
+						movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+					}
 					vLeft = 0.0;
 					vRight = 0.0;
+					isStopped = true;
 					break;
 				case turn_around:
 					printf("DOING a 180 - no line in sight");
@@ -328,6 +338,18 @@ int main(){
 					vLeft = 0.0;
 					vRight = 0.0;
 					hasTurnedAround = true;
+				case maze_left:
+					printf("MAZE LEFT\n");
+					movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+					vLeft = 0.0;
+					vRight = 169.0;
+					break;
+				case maze_right:
+					printf("MAZE RIGHT\n");
+					movesBeforeTurn(STRAIGHT_MOVES_SHARP_TURN);
+					vLeft = 169.0;
+					vRight = 0.0;
+					break;
 				case emergency_left:
 					printf("EMERGENCY LEFT\n\n");
 					vLeft = 0.0;
