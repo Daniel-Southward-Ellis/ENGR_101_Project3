@@ -1,7 +1,70 @@
-# ENGR_101_Project3
-Team 15's project 3 for ENGR 101
+<span id="anchor"></span>Install Instructions For Linux
 
-<span id="anchor"></span> AVC Plan
+1.  Download the project from this repo by clicking the clone or
+    download button in the top right hand corner and selecting Download
+    ZIP
+2.  Find the downloaded file and Unzip it, this will vary based on your
+    linux distro but in general you can do this either by double
+    clicking the file and using an archive manager or by opening a
+    terminal in the same folder as the ZIP file and running **unzip
+    \<filename\>** where \<filename\> is replaced with the name of the
+    file.
+3.  Next download the Linux version of SFML from [*this
+    link*](https://www.sfml-dev.org/download/sfml/2.5.1/), if you used
+    an archive manager in the last step you can simply use it again the
+    same way. If you used the unzip command in the last step you should
+    be able to unzip it by opening a terminal and running **tar -zxvf
+    \<filename\>** where \<filename\> is replaced with the name of the
+    file. 
+4.  Next find the folder name “SFML-2.5.1” this may be in the folder
+    you’re working in or it may be in a subfolder with the name of the
+    SFML .zip file. Once you have found it, move it and the unzipped
+    folder containing the repo to wherever you would like to keep them.
+    Simply ensure the layout of folders is maintained.
+5.  Ensure you have g++ and make installed, this can be done by running
+    **g++ --version** and **make --version** respectively. If you
+    receive an error message about these commands not being found you
+    will have to install them. On a debian based system such as Ubuntu
+    Debian or Mint these can be installed with the command **sudo
+    apt-get install g++ make **If you are not on a debian based system
+    you should google the command for your package manager and install
+    g++ and make using that.
+6.  Next navigate to the AVC\_robot folder, it can be found inside the
+    extracted folder from the repo zip. Open a terminal in this folder
+    and run the **make** command. If you receive an error double check
+    the SFML -2.5.1 folder is two levels up from the AVC\_robot folder
+    and that you have the correct version of SFML (2.5.1). If it says
+    “robot is up to date” delete the robot file and run **make**
+    again. Leave a terminal open in this folder.
+7.  Navigate up to the AVC\_linux\_server folder, you can edit the first
+    line of the config.txt file to choose which maze you want to test
+    the robot in, replace the everything after **mazeFile, ** with the
+    file name of the maze you want to test leaving no spaces on the
+    line. 
+8.  You should be able to start the server by running **./server3** if
+    that doesn’t work try running the **make** command or setting the
+    server3 file to be executable, probably with the command **chmod +x
+    server3** although this may differ for your linux distro.
+9.  Once the server window appears, pull up the terminal window you left
+    open in the AVC\_robot folder and run **./robot **If this doesn’t
+    work try running **chmod +x robot** or the equivalent command for
+    your distro.
+10. The robot should now be navigating your maze of choice.
+
+<span id="anchor-1"></span>A few tips on non-linux OS’s NOTE: Not a
+complete guide
+
+  - The makefile for the robot should operate on Mac, Windows and Linux,
+    the non linux server should run on Windows and Mac but the makefile
+    won’t, it’s mac only.
+  - The linux robot makefile requires the SFML-2.5.1 folder one level up
+    from the server and robot folders, the mac one requires SFML in a
+    folder in /usr/local/lib/SFML, windows requires SFML in a folder at
+    C:\\SFML\\ In all cases the SFML folder should contain the lib,
+    include and share folders directly with no other folders before
+    them.
+
+<span id="anchor-2"></span>AVC Plan
 
 **Team Name: Team 15**
 
@@ -15,11 +78,11 @@ Daniel Southward-Ellis
 
 Conrad Draper (Missing)
 
-<span id="anchor-1"></span>**Communication tool:**
+<span id="anchor-3"></span>**Communication tool:**
 
 Google doc, Discord, VUW Email, Gmail
 
-<span id="anchor-2"></span>**Roles:**
+<span id="anchor-4"></span>**Roles:**
 
 Lily - Project Manager (organising team meetings, reporting regularly on
 progress)
